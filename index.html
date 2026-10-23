@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ライツアウト</title>
+  <!-- タイトルとルールの文字：明朝体（しっぽり明朝）を Google Fonts から読み込む -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@500;700&display=swap" rel="stylesheet">
+  <style>
+    /* ページ全体：背景を暗くして、中身を真ん中に置く */
+    body {
+      margin: 0;
+      padding: 16px; /* スマホで画面のふちにくっつかないように */
+      box-sizing: border-box;
+      min-height: 100vh;
+      background: #1e1e2e;
+      color: #ffffff;
+      font-family: sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* タイトル：大きい明朝体で、タイルと同じ黄色 */
+    h1 {
+      margin: 0 0 12px;
+      font-family: "Shippori Mincho", serif;
+      font-weight: 700;
+      font-size: 48px;
+      letter-spacing: 0.15em; /* 文字と文字の間を広げて、ゆったり見せる */
+      color: #ffd166;
+    }
+
+    /* 遊び方の説明：小さい明朝体で、控えめな色 */
+    .rule {
+      margin-top: 0;
+      font-family: "Shippori Mincho", serif;
+      font-weight: 500;
+      font-size: 15px;
+      letter-spacing: 0.1em;
+      line-height: 1.8;
+      color: #d8d8e4;
+      text-align: center;
+    }
+
+    /* 文の途中で改行されず、文の区切りで改行されるようにする */
+    .rule span {
+      display: inline-block;
+      max-width: 100%; /* スマホで1文が入りきらないときは、文の中でも改行する */
+    }
+
+    /* マス目：5列に並べる */
+    #board {
+      /* マスの大きさ：ふつうは60px。画面がせまいときは、はみ出さない大きさまで小さくする */
+      --cell: min(60px, calc((100vw - 32px - 32px) / 5));
+      display: grid;
+      grid-template-columns: repeat(5, var(--cell));
+      gap: 8px;
+    }
+
+    /* 1つ1つのマス */
+    .cell {
+      width: var(--cell);
+      height: var(--cell);
+      border: none;
+      border-radius: 8px;
+      background: #3a3a4f; /* 消えている色 */
+      cursor: pointer;
+      transition: background 0.2s, transform 0.1s; /* 色と大きさをなめらかに変える */
+    }
+
+    /* 押している間だけ、少し縮む */
+    .cell:active {
+      transform: scale(0.9);
+    }
+
+    /* 光っているマス */
+    .cell.on {
+      background: #ffd166;
+    }
+
+    /* 「クリア！」の文字 */
+    #message {
+      height: 1.5em;
+      margin-top: 20px;
+      font-size: 24px;
+      font-weight: bold;
+      color: #ffd166;
+    }
+
+    /* 「新しい問題」ボタン */
+    #new-game {
+      padding: 10px 24px;
+      border: none;
+      border-radius: 8px;
+      background: #ffd166;
+      color: #1e1e2e;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer; /* マウスを乗せると指の形になる */
+      box-shadow: 0 4px 0 #b8913a; /* 下に影をつけて、浮いているように見せる */
+      transition: transform 0.1s, box-shadow 0.1s;
+    }
+
+    /* 押している間：ボタンが下に沈む（影が消えて、そのぶん下がる） */
+    #new-game:active {
+      transform: translateY(4px);
+      box-shadow: 0 0 0 #b8913a;
+    }
+
+    /* 裏返っている最中のマス */
+    .cell.flipping {
+      animation: flip 0.4s ease-in-out;
+      transition: none; /* 裏返りの途中で色がパッと変わるように、なめらかな色の変化を止める */
+    }
+
+    /* 裏返る動き：真横を向く（見えなくなる）→ 元に戻る */
+    @keyframes flip {
+      0%   { transform: rotateY(0deg); }
+      50%  { transform: rotateY(90deg); }
+      100% { transform: rotateY(0deg); }
+    }
+  </style>
+</head>
+<body>
+  <h1>ライツアウト</h1>
+
+  <!-- 遊び方 -->
+  <p class="rule"><span>マスを押すと、上下左右も切り替わります。</span><span>全部消したらクリア！</span></p>
+
+  <!-- 押した回数 -->
+  <p id="moves">手数：0</p>
+
+  <!-- ここにマス目が入る -->
+  <div id="board"></div>
+
+  <!-- クリアしたらここに文字が出る -->
+  <p id="message"></p>
+
+  <!-- 押すと新しい問題になる -->
+  <button id="new-game">新しい問題</button>
+
+  <script>
+    const SIZE = 5; // 5×5
+    const board = document.getElementById("board");
+    const cells = []; // 作ったマスをここに順番に入れておく
+    let moves = 0;    // 押した回数（手数）
+
+    // マスを押したときの効果音
+    const pressSound = new Audio("sounds/press.mp3");
+    function playPressSound() {
+      pressSound.currentTime = 0; // 続けて押したときも、最初から鳴らし直す
+      pressSound.play();
+    }
+
+    // クリアしたときの効果音：プログラムで「ド・ミ・ソ・ド」と上がっていく音を作る
+    let audioContext = null; // 音を作る道具（最初に鳴らすときに用意する）
+    function playClearSound() {
+      if (!audioContext) audioContext = new AudioContext();
+      const notes = [523, 659, 784, 1047]; // ド・ミ・ソ・高いド の音の高さ（Hz）
+      notes.forEach((freq, n) => {
+        const start = audioContext.currentTime + n * 0.12; // 0.12秒ずつずらして鳴らす
+        const osc = audioContext.createOscillator(); // 音のもと
+        const gain = audioContext.createGain();      // 音の大きさ
+        osc.type = "triangle"; // やわらかい電子音
+        osc.frequency.value = freq;
+        gain.gain.setValueAtTime(0.3, start);
+        gain.gain.exponentialRampToValueAtTime(0.001, start + 0.4); // だんだん小さくして消す
+        osc.connect(gain).connect(audioContext.destination);
+        osc.start(start);
+        osc.stop(start + 0.4);
+      });
+    }
+
+    // 25個のマスを作って、マス目に入れる
+    for (let i = 0; i < SIZE * SIZE; i++) {
+      const cell = document.createElement("button");
+      cell.className = "cell";
+      // 押されたら、色を変えて、手数を1増やしてから、クリアしたか調べる
+      cell.addEventListener("click", () => {
+        playPressSound();
+        press(i);
+        moves++;
+        document.getElementById("moves").textContent = "手数：" + moves;
+        checkClear();
+      });
+      board.appendChild(cell);
+      cells.push(cell);
+    }
+
+    // 何行目・何列目のマスの色を反対にする（光る⇔消える）
+    function toggle(row, col) {
+      // マス目の外なら何もしない
+      if (row < 0 || row >= SIZE || col < 0 || col >= SIZE) return;
+      cells[row * SIZE + col].classList.toggle("on");
+    }
+
+    // i番目のマスが押されたとき：そのマスと上下左右の色を変える
+    function press(i) {
+      const row = Math.floor(i / SIZE); // 何行目か
+      const col = i % SIZE;             // 何列目か
+      toggle(row, col);     // 押したマス
+      toggle(row - 1, col); // 上
+      toggle(row + 1, col); // 下
+      toggle(row, col - 1); // 左
+      toggle(row, col + 1); // 右
+    }
+
+    // 全部のマスが消えていたら「クリア！（○手）」と出す
+    function checkClear() {
+      const allOff = cells.every(cell => !cell.classList.contains("on"));
+      document.getElementById("message").textContent = allOff ? "クリア！（" + moves + "手）" : "";
+      if (allOff) playClearSound();
+    }
+
+    // 最初の並びをランダムに作る
+    // 全部消えた状態から、ランダムなマスを10回「押して」作るので、必ず解ける問題になる
+    function newGame() {
+      do {
+        cells.forEach(cell => cell.classList.remove("on")); // いったん全部消す
+        for (let n = 0; n < 10; n++) {
+          press(Math.floor(Math.random() * SIZE * SIZE)); // 0〜24のどれかを押す
+        }
+      } while (cells.every(cell => !cell.classList.contains("on"))); // 偶然全部消えていたら作り直す
+
+      moves = 0;
+      document.getElementById("moves").textContent = "手数：0";
+      document.getElementById("message").textContent = "";
+    }
+
+    // ボタンが押されたら、マスを裏返しながら新しい問題を作る
+    const newGameButton = document.getElementById("new-game");
+    newGameButton.addEventListener("click", () => {
+      newGameButton.disabled = true; // 裏返っている間は、もう一度押せないようにする
+      cells.forEach(cell => cell.classList.add("flipping"));
+
+      // 0.2秒後（マスが真横を向いて見えないとき）に、新しい並びに入れ替える
+      setTimeout(newGame, 200);
+
+      // 0.4秒後（裏返り終わったとき）に、元に戻す
+      setTimeout(() => {
+        cells.forEach(cell => cell.classList.remove("flipping"));
+        newGameButton.disabled = false;
+      }, 400);
+    });
+
+    newGame();
+  </script>
+</body>
+</html>
