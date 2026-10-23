@@ -29,8 +29,10 @@
       margin: 0 0 12px;
       font-family: "Shippori Mincho", serif;
       font-weight: 700;
-      font-size: 48px;
+      /* ふつうは48px。画面がせまいときは、1行に収まる大きさまで小さくする */
+      font-size: min(48px, calc((100vw - 32px) / 7));
       letter-spacing: 0.15em; /* 文字と文字の間を広げて、ゆったり見せる */
+      white-space: nowrap;    /* 途中で改行しない */
       color: #ffd166;
     }
 
@@ -46,7 +48,7 @@
       text-align: center;
     }
 
-    /* 文の途中で改行されず、文の区切りで改行されるようにする */
+    /* 言葉の途中で改行されず、「、」や「。」の区切りで改行されるようにする */
     .rule span {
       display: inline-block;
       max-width: 100%; /* スマホで1文が入りきらないときは、文の中でも改行する */
@@ -129,7 +131,7 @@
   <h1>ライツアウト</h1>
 
   <!-- 遊び方 -->
-  <p class="rule"><span>マスを押すと、上下左右も切り替わります。</span><span>全部消したらクリア！</span></p>
+  <p class="rule"><span>マスを押すと、</span><span>上下左右も切り替わります。</span><span>全部消したらクリア！</span></p>
 
   <!-- 押した回数 -->
   <p id="moves">手数：0</p>
