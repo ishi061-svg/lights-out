@@ -4,17 +4,20 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ライツアウト</title>
-  <!-- タイトルとルールの文字：明朝体（しっぽり明朝）を Google Fonts から読み込む -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@500;700&display=swap" rel="stylesheet">
   <style>
+    /* ページの一番外側でも、引っぱったときの伸びを止める */
+    html {
+      overscroll-behavior: none;
+    }
+
     /* ページ全体：背景を暗くして、中身を真ん中に置く */
     body {
       margin: 0;
       padding: 16px; /* スマホで画面のふちにくっつかないように */
       box-sizing: border-box;
-      min-height: 100vh;
+      min-height: 100vh;  /* dvh が使えない古いブラウザ用 */
+      min-height: 100dvh; /* スマホのアドレスバーが出ているときも、本当の画面の高さに合わせる */
+      overscroll-behavior: none; /* 画面の端で引っぱったときに、ページ全体が伸びて動かないようにする */
       background: #1e1e2e;
       color: #ffffff;
       font-family: sans-serif;
@@ -24,34 +27,17 @@
       justify-content: center;
     }
 
-    /* タイトル：大きい明朝体で、タイルと同じ黄色 */
+    /* タイトル：文字と遊び方の絵が入った画像。ふつうは幅360px。画面がせまいときは、はみ出さないように縮める */
     h1 {
-      margin: 0 0 12px;
-      font-family: "Shippori Mincho", serif;
-      font-weight: 700;
-      /* ふつうは48px。画面がせまいときは、1行に収まる大きさまで小さくする */
-      font-size: min(48px, calc((100vw - 32px) / 7));
-      letter-spacing: 0.15em; /* 文字と文字の間を広げて、ゆったり見せる */
-      white-space: nowrap;    /* 途中で改行しない */
-      color: #ffd166;
+      width: min(360px, 100%);
+      margin: 0 0 4px;
     }
 
-    /* 遊び方の説明：小さい明朝体で、控えめな色 */
-    .rule {
-      margin-top: 0;
-      font-family: "Shippori Mincho", serif;
-      font-weight: 500;
-      font-size: 15px;
-      letter-spacing: 0.1em;
-      line-height: 1.8;
-      color: #d8d8e4;
-      text-align: center;
-    }
-
-    /* 言葉の途中で改行されず、「、」や「。」の区切りで改行されるようにする */
-    .rule span {
-      display: inline-block;
-      max-width: 100%; /* スマホで1文が入りきらないときは、文の中でも改行する */
+    /* タイトル画像：h1 の幅いっぱいに広げる（高さは縦横の比率を保って自動で決まる） */
+    h1 img {
+      display: block;
+      width: 100%;
+      height: auto;
     }
 
     /* マス目：5列に並べる */
@@ -72,6 +58,7 @@
       background: #3a3a4f; /* 消えている色 */
       cursor: pointer;
       transition: background 0.2s, transform 0.1s; /* 色と大きさをなめらかに変える */
+      touch-action: manipulation; /* スマホで素早く2回押しても、画面が拡大されないようにする */
     }
 
     /* 押している間だけ、少し縮む */
@@ -84,7 +71,7 @@
       background: #ffd166;
     }
 
-    /* 「クリア！」の文字 */
+    /* 「CLEAR!」の文字 */
     #message {
       height: 1.5em;
       margin-top: 20px;
@@ -95,22 +82,24 @@
 
     /* 「新しい問題」ボタン */
     #new-game {
-      padding: 10px 24px;
+      display: flex;          /* アイコンをボタンの真ん中に置く */
+      align-items: center;
+      justify-content: center;
+      padding: 8px 24px;
       border: none;
       border-radius: 8px;
       background: #ffd166;
-      color: #1e1e2e;
-      font-size: 16px;
-      font-weight: bold;
+      color: #1e1e2e;         /* アイコンの色（SVGの currentColor がこの色になる） */
       cursor: pointer; /* マウスを乗せると指の形になる */
-      box-shadow: 0 4px 0 #b8913a; /* 下に影をつけて、浮いているように見せる */
+      box-shadow: 0 4px 0 #d9a441; /* 下に影（ボタンの側面）をつけて、浮いているように見せる */
+      touch-action: manipulation;  /* スマホで素早く2回押しても、画面が拡大されないようにする */
       transition: transform 0.1s, box-shadow 0.1s;
     }
 
     /* 押している間：ボタンが下に沈む（影が消えて、そのぶん下がる） */
     #new-game:active {
       transform: translateY(4px);
-      box-shadow: 0 0 0 #b8913a;
+      box-shadow: 0 0 0 #d9a441;
     }
 
     /* 裏返っている最中のマス */
@@ -128,13 +117,11 @@
   </style>
 </head>
 <body>
-  <h1>ライツアウト</h1>
-
-  <!-- 遊び方 -->
-  <p class="rule"><span>マスを押すと、</span><span>上下左右も切り替わります。</span><span>全部消したらクリア！</span></p>
+  <!-- タイトルと遊び方の画像。alt は画像が見えない人や読み上げソフトに伝える説明 -->
+  <h1><img src="images/title.png" alt="LIGHTS OUT：光っているマスを押して、全部消すとクリア" width="585" height="224"></h1>
 
   <!-- 押した回数 -->
-  <p id="moves">手数：0</p>
+  <p id="moves">STEP 0</p>
 
   <!-- ここにマス目が入る -->
   <div id="board"></div>
@@ -143,7 +130,15 @@
   <p id="message"></p>
 
   <!-- 押すと新しい問題になる -->
-  <button id="new-game">新しい問題</button>
+  <!-- 見た目は矢印のアイコンだけ。aria-label は読み上げソフトに「新しい問題」と伝える説明 -->
+  <button id="new-game" aria-label="新しい問題" title="新しい問題">
+    <svg viewBox="0 0 24 24" width="28" height="28" aria-hidden="true">
+      <!-- 右から下・左・上へ、ぐるっと回る太い線 -->
+      <path d="M19 13 A7 7 0 1 1 12 6" fill="none" stroke="currentColor" stroke-width="3.5"/>
+      <!-- 線の先に付ける、右向きの三角（矢じり） -->
+      <path d="M11 1.5 L17.5 6 L11 10.5 Z" fill="currentColor"/>
+    </svg>
+  </button>
 
   <script>
     const SIZE = 5; // 5×5
@@ -186,7 +181,7 @@
         playPressSound();
         press(i);
         moves++;
-        document.getElementById("moves").textContent = "手数：" + moves;
+        document.getElementById("moves").textContent = "STEP " + moves;
         checkClear();
       });
       board.appendChild(cell);
@@ -211,10 +206,10 @@
       toggle(row, col + 1); // 右
     }
 
-    // 全部のマスが消えていたら「クリア！（○手）」と出す
+    // 全部のマスが消えていたら「CLEAR! STEP ○」と出す
     function checkClear() {
       const allOff = cells.every(cell => !cell.classList.contains("on"));
-      document.getElementById("message").textContent = allOff ? "クリア！（" + moves + "手）" : "";
+      document.getElementById("message").textContent = allOff ? "CLEAR! STEP " + moves : "";
       if (allOff) playClearSound();
     }
 
@@ -229,7 +224,7 @@
       } while (cells.every(cell => !cell.classList.contains("on"))); // 偶然全部消えていたら作り直す
 
       moves = 0;
-      document.getElementById("moves").textContent = "手数：0";
+      document.getElementById("moves").textContent = "STEP 0";
       document.getElementById("message").textContent = "";
     }
 
